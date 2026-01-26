@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.response.LoginResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ public class QrSseController {
         return emitter;
     }
 
-    public void notifyConfirmed(String qrId, LoginToken token) {
+    public void notifyConfirmed(String qrId, LoginResponse token) {
         SseEmitter emitter = emitters.get(qrId);
         if (emitter != null) {
             try {
