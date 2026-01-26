@@ -19,10 +19,12 @@ public class QrLoginService {
     }
 
     public QrLoginState init() {
-        QrLoginState state = new QrLoginState();
-        state.setQrId(UUID.randomUUID().toString());
-        state.setQrToken(UUID.randomUUID().toString());
-        state.setStatus(QrLoginState.Status.INIT);
+        QrLoginState state = QrLoginState
+                .builder()
+                .qrId(UUID.randomUUID().toString())
+                .qrToken(UUID.randomUUID().toString())
+                .status(QrLoginState.Status.INIT)
+                .build();
 
         cache.put(QR_KEY + state.getQrId(), state, Duration.ofMinutes(2));
         return state;

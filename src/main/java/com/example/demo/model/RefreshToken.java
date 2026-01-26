@@ -4,6 +4,7 @@ import lombok.*;
 
 @Data
 @Builder
+@AllArgsConstructor
 public class RefreshToken {
     private String tokenId;
     private String userId;
