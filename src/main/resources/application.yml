@@ -1,0 +1,10 @@
+server:
+  port: 9000
+
+jwt:
+  secret: "Zm9vYmFyMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=" # 256-bit base64
+  expiration-in-minutes: 60
+
+spring:
+  application:
+    name: demo

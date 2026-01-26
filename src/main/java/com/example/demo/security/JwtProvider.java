@@ -1,5 +1,6 @@
 package com.example.demo.security;
 
+import com.example.demo.config.JwtProperties;
 import com.example.demo.model.LoginType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -15,17 +16,23 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
-    private final SecretKey key = Keys.hmacShaKeyFor(
-            Base64.getDecoder().decode("YOUR_256_BIT_SECRET")
-    );
+    private final SecretKey key;
+    private final long expirationMinutes;
+
+    public JwtProvider(JwtProperties properties) {
+        // 從 yml 讀取 secret
+        byte[] decoded = Base64.getDecoder().decode(properties.getSecret());
+        this.key = Keys.hmacShaKeyFor(decoded);
+        this.expirationMinutes = properties.getExpirationInMinutes();
+    }
 
     public String generate(String userId, LoginType type, String sessionId) {
         return Jwts.builder()
-                .subject(userId)
+                .setSubject(userId)
                 .claim("loginType", type.name())
                 .claim("sessionId", sessionId)
-                .issuedAt(new Date())
-                .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
+                .setIssuedAt(new Date())
+                .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
                 .signWith(key)
                 .compact();
     }
