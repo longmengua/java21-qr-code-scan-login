@@ -28,11 +28,11 @@ public class JwtProvider {
 
     public String generate(String userId, LoginType type, String sessionId) {
         return Jwts.builder()
-                .setSubject(userId)
+                .subject(userId)
                 .claim("loginType", type.name())
                 .claim("sessionId", sessionId)
-                .setIssuedAt(new Date())
-                .setExpiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
+                .issuedAt(new Date())
+                .expiration(Date.from(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES)))
                 .signWith(key)
                 .compact();
     }

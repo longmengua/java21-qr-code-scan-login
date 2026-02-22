@@ -5,6 +5,33 @@ jwt:
   secret: "Zm9vYmFyMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=" # 256-bit base64
   expiration-in-minutes: 60
 
+cache:
+  type: local
+
+app:
+  admin:
+    accounts:
+      - username: admin
+        password: 1234
+      - username: test
+        password: 1234
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId}] %-5level %logger{36} - %msg%n"
+
 spring:
   application:
     name: demo
+#  data:
+#    redis:
+      # single node usage
+#      host: localhost
+#      port: 6379
+
+      # cluster nodes usage
+#      cluster:
+#        nodes:
+#          - 10.0.0.1:6379
+#          - 10.0.0.2:6379

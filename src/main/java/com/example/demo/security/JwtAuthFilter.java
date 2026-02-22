@@ -41,7 +41,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         LoginType type = LoginType.valueOf(claims.get("loginType", String.class));
         String sessionId = claims.get("sessionId", String.class);
 
-        if (!sessionCoordinator.validate(userId, type, sessionId)) {
+        if (sessionCoordinator.isValidated(userId, type, sessionId)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }

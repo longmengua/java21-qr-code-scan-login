@@ -5,25 +5,17 @@ import com.example.demo.model.QrLoginState;
 import com.example.demo.response.LoginResponse;
 import com.example.demo.service.LoginService;
 import com.example.demo.service.QrLoginService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/auth/qr")
 public class QrLoginController {
 
     private final QrLoginService qrLoginService;
     private final LoginService loginService;
     private final QrSseController sseController;
-
-    public QrLoginController(
-            QrLoginService qrLoginService,
-            LoginService loginService,
-            QrSseController sseController
-    ) {
-        this.qrLoginService = qrLoginService;
-        this.loginService = loginService;
-        this.sseController = sseController;
-    }
 
     /**
      * Web 產生 QR

@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.response.LoginResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,10 +12,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/auth/qr")
 public class QrSseController {
 
-    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final Map<String, SseEmitter> emitters;
 
     @GetMapping("/subscribe/{qrId}")
     public SseEmitter subscribe(@PathVariable String qrId) {
