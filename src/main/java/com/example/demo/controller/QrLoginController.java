@@ -2,8 +2,8 @@ package com.example.demo.controller;
 
 import com.example.demo.model.LoginType;
 import com.example.demo.model.QrLoginState;
-import com.example.demo.response.LoginResponse;
-import com.example.demo.service.LoginService;
+import com.example.demo.model.TokenPair;
+import com.example.demo.service.AuthService;
 import com.example.demo.service.QrLoginService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 public class QrLoginController {
 
     private final QrLoginService qrLoginService;
-    private final LoginService loginService;
+    private final AuthService authService;
     private final QrSseController sseController;
 
     /**
@@ -34,19 +34,15 @@ public class QrLoginController {
             @RequestParam String qrToken,
             @RequestHeader("X-Device-Id") String deviceId
     ) {
-        String userId = "USER-001"; // App 已登入的 user
+        // TODO: 從 App 已登入 session 取得 userId
+        String userId = "USER-001";
 
         qrLoginService.confirm(qrId, qrToken, userId);
 
-        // 掃碼成功 = SCAN 登入
-        LoginResponse token = loginService.login(
-                userId,
-                "N/A",
-                LoginType.SCAN,
-                deviceId
-        );
+        // 掃碼成功，建立 SCAN 登入 session
+        TokenPair token = authService.generateTokenPair(userId, LoginType.SCAN, deviceId);
 
-        // SSE 通知 Web
+        // SSE 通知 Web 已登入
         sseController.notifyConfirmed(qrId, token);
     }
 }

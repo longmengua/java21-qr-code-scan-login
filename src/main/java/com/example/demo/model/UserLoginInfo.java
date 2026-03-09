@@ -19,7 +19,7 @@ import lombok.*;
 @Data
 @Builder
 @AllArgsConstructor
-public class RefreshToken {
+public class UserLoginInfo {
 
     /**
      * Refresh Token 的唯一識別碼

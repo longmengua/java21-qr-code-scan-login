@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.model.TokenPair;
 import com.example.demo.response.LoginResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,7 +27,7 @@ public class QrSseController {
         return emitter;
     }
 
-    public void notifyConfirmed(String qrId, LoginResponse token) {
+    public void notifyConfirmed(String qrId, TokenPair token) {
         SseEmitter emitter = emitters.get(qrId);
         if (emitter != null) {
             try {

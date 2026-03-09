@@ -1,7 +1,7 @@
 package com.example.demo.response;
 
-public record LoginResponse (
-        String accessToken,
-        String refreshToken
-) {}
+import com.example.demo.model.TokenPair;
 
+public record LoginResponse(
+        TokenPair tokenPair
+) {}
