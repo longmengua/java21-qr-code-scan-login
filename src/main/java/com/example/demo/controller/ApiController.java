@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.cache.CacheService;
 import com.example.demo.model.LoginType;
 import com.example.demo.response.ProfileResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 /**
  * ProfileController
@@ -22,17 +25,21 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class ApiController {
 
+    private final CacheService cacheService;
+
     @GetMapping("/profile")
     public ProfileResponse profile(HttpServletRequest request) {
         // 從 AuthFilter 注入的 attribute 拿到使用者資訊
         String userId = (String) request.getAttribute("userId");
         LoginType loginType = (LoginType) request.getAttribute("loginType");
 
+        String result = cacheService.getAll(null).orElse("");
+
         // 回傳簡單示例資訊
         return ProfileResponse.builder()
                 .userId(userId)
                 .loginType(loginType)
-                .message("Hello! This is your profile info.")
+                .message(result)
                 .build();
     }
 }

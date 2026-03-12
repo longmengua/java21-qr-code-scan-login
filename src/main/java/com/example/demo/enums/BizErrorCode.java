@@ -13,7 +13,8 @@ public enum BizErrorCode {
     USER_DISABLED(HttpStatus.FORBIDDEN, "帳號已停權"),
     USER_ALREADY_REGISTERED(HttpStatus.CONFLICT, "帳號已註冊"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "參數錯誤"),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系統錯誤");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系統錯誤"),
+    ;
 
     private final HttpStatus status;
     private final String message;

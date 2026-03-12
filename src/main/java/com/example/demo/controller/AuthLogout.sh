@@ -1,2 +1,2 @@
 curl -X POST http://localhost:9000/auth/logout \
-  -H "X-Refresh-Token: <refreshToken>"
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwIiwibG9naW5UeXBlIjoiV0VCIiwic2Vzc2lvbklkIjoiYjk0Zjc5YzYtZTU1NS00ZTdlLWI0MDktZTNiODAzNzIyMGIwIiwiaWF0IjoxNzczMzQ5MjI4LCJleHAiOjE3NzMzNTI4Mjh9.mw5mZculs8zSkt-jXsnNfXvMZ2fZ6iJvWZz0HMYQOkw"

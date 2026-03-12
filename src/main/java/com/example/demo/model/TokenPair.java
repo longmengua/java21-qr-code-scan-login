@@ -9,6 +9,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class TokenPair {
     private String accessToken;
-    private String refreshTokenId;
 }
 

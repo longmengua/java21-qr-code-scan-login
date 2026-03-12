@@ -5,34 +5,25 @@ import com.example.demo.enums.BizErrorCode;
 import com.example.demo.exceptions.BusinessException;
 import com.example.demo.model.LoginType;
 import com.example.demo.model.TokenPair;
-import com.example.demo.model.UserLoginInfo;
 import com.example.demo.cache.CacheService;
-import com.example.demo.security.JwtProvider;
+import com.example.demo.component.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    // Redis Key 前綴 - Refresh Token
-    private static final String RT_KEY = "refresh::token::";
-    private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30); // Refresh Token 過期時間
-
-    // Redis Key 前綴 - 使用者 Session
-    private static final String SESSION_KEY = "user:session:";
-    private static final Duration SESSION_TTL = Duration.ofDays(7); // Session 過期時間
-
-    // 登入互踢規則映射：key 登入類型會踢掉 value 中的登入類型
-    private static final Map<LoginType, Set<LoginType>> IMPACT_MAP = Map.of(
-            LoginType.SCAN, Set.of(LoginType.WEB),
-            LoginType.APP, Set.of(LoginType.SCAN)
-    );
+    private static final Duration SESSION_TTL = Duration.ofDays(7);
+    private static final String SESSION_KEY_PREFIX = "user:session:";
+    private static final String IMPACT_KEY_PREFIX = "impact:";
 
     private final CacheService cacheService;
     private final JwtProvider jwtProvider;
@@ -42,7 +33,7 @@ public class AuthService {
      * 使用者註冊
      */
     public TokenPair register(String username, String password, LoginType loginType, String deviceId) {
-        String userId = authenticate(username, password);
+        String userId = verifyUser(username, password);
 
         if (userId != null) {
             throw new BusinessException(BizErrorCode.USER_ALREADY_REGISTERED);
@@ -51,76 +42,87 @@ public class AuthService {
         // TODO: 建立新使用者到資料庫
         userId = UUID.randomUUID().toString();
 
-        return generateTokenPair(userId, loginType, deviceId);
+        return generateToken(userId, loginType, deviceId);
     }
 
     /**
      * 使用者登入
      */
     public TokenPair login(String username, String password, LoginType loginType, String deviceId) {
-        String userId = authenticate(username, password);
+        String userId = verifyUser(username, password);
 
         if (userId == null) {
-            throw new BusinessException(BizErrorCode.AUTH_INVALID_CREDENTIAL);
+            // 檢查是否為管理員
+            if (isAdmin(username, password)) {
+                userId = "0"; // 管理員固定 userId
+            } else {
+                throw new BusinessException(BizErrorCode.AUTH_INVALID_CREDENTIAL);
+            }
         }
 
-        return generateTokenPair(userId, loginType, deviceId);
-    }
-
-    /**
-     * Refresh Token 更新 (旋轉)
-     */
-    public TokenPair refresh(String refreshToken, String deviceId) {
-        // 先從 cache 取得 loginInfo
-        UserLoginInfo loginInfo = cacheService
-                .get(RT_KEY + refreshToken, UserLoginInfo.class)
-                .orElseThrow(() -> new BusinessException(BizErrorCode.AUTH_INVALID_CREDENTIAL));
-
-        // 驗證 session 與裝置是否匹配
-        if (!Objects.equals(loginInfo.getDeviceId(), deviceId) ||
-                !isSessionValidBySessionId(loginInfo.getUserId(), loginInfo.getLoginType(), loginInfo.getSessionId())) {
-            throw new BusinessException(BizErrorCode.AUTH_INVALID_CREDENTIAL);
-        }
-
-        // 移除舊 session 與 refresh token
-        removeSession(refreshToken);
-
-        // 產生新的 Access Token + Refresh Token
-        return generateTokenPair(loginInfo.getUserId(), loginInfo.getLoginType(), loginInfo.getDeviceId());
+        return generateToken(userId, loginType, deviceId);
     }
 
     /**
      * 使用者登出
      */
-    public void logout(String refreshToken) {
-        removeSession(refreshToken);
+    public void logout(String userId, LoginType loginType) {
+        cacheService.delete(buildSessionKey(userId, loginType));
+        cacheService.delete(buildImpactKey(userId, loginType));
     }
 
     /**
-     * 根據 refreshToken 與 deviceId 檢查 session 是否有效
-     */
-    public boolean isSessionValid(String refreshToken, String deviceId) {
-        UserLoginInfo loginInfo = cacheService.get(RT_KEY + refreshToken, UserLoginInfo.class).orElse(null);
-        if (loginInfo == null) return false;
-        if (!Objects.equals(loginInfo.getDeviceId(), deviceId)) return false;
-        return isSessionValidBySessionId(loginInfo.getUserId(), loginInfo.getLoginType(), loginInfo.getSessionId());
-    }
-
-    /**
-     * 根據 userId, loginType 與 sessionId 檢查 session 是否有效
-     * (主要給 JwtAuthFilter 使用)
+     * 驗證 session 是否有效
      */
     public boolean isSessionValidBySessionId(String userId, LoginType loginType, String sessionId) {
-        Optional<String> cachedSession = cacheService.get(buildSessionKey(userId, loginType), String.class);
-        return cachedSession.map(s -> s.equals(sessionId)).orElse(false);
+        Optional<String> optional = cacheService.get(buildSessionKey(userId, loginType), String.class);
+
+        return optional.isPresent() && optional.get().equals(sessionId);
     }
 
     /**
-     * 統一帳號驗證：管理員或一般使用者
+     * 產生 AccessToken 並註冊 session
      */
-    private String authenticate(String username, String password) {
-        if (isAdmin(username, password)) return "0"; // 管理員固定 userId
-        return verifyUser(username, password);
+    public TokenPair generateToken(String userId, LoginType loginType, String deviceId) {
+        String sessionId = UUID.randomUUID().toString();
+        registerSession(userId, loginType, sessionId);
+
+        String token = jwtProvider.generate(userId, loginType, sessionId);
+        return new TokenPair("Bearer " + token);
+    }
+
+    /**
+     * 註冊 session 並處理互踢（IMPACT_MAP 存 cache）
+     */
+    private void registerSession(String userId, LoginType loginType, String sessionId) {
+        Set<LoginType> impactedTypes = getImpactedLoginTypes(loginType);
+
+        for (LoginType type : impactedTypes) {
+            cacheService.get(buildImpactKey(userId, type), String.class)
+                    .ifPresent(impactedSession -> cacheService.delete(buildSessionKey(userId, type)));
+        }
+
+        cacheService.put(buildSessionKey(userId, loginType), sessionId, SESSION_TTL);
+        cacheService.put(buildImpactKey(userId, loginType), sessionId, SESSION_TTL);
+    }
+
+    /**
+     * 互踢規則
+     */
+    private Set<LoginType> getImpactedLoginTypes(LoginType loginType) {
+        return switch (loginType) {
+            case SCAN -> Set.of(LoginType.WEB);
+            case APP -> Set.of(LoginType.SCAN);
+            default -> Set.of();
+        };
+    }
+
+    private String buildSessionKey(String userId, LoginType loginType) {
+        return SESSION_KEY_PREFIX + userId + ":" + loginType;
+    }
+
+    private String buildImpactKey(String userId, LoginType loginType) {
+        return IMPACT_KEY_PREFIX + userId + ":" + loginType;
     }
 
     /**
@@ -133,63 +135,9 @@ public class AuthService {
     }
 
     /**
-     * TODO: 從資料庫驗證一般使用者帳號
+     * TODO: 從資料庫驗證一般使用者帳號，返回 userId
      */
     private String verifyUser(String username, String password) {
         return null;
-    }
-
-    /**
-     * 產生 AccessToken + RefreshToken 並註冊 session
-     */
-    public TokenPair generateTokenPair(String userId, LoginType loginType, String deviceId) {
-        // 產生 sessionId
-        String sessionId = UUID.randomUUID().toString();
-
-        // 註冊 session 並處理互踢
-        registerSession(userId, loginType, sessionId);
-
-        // 生成 AccessToken
-        String accessToken = jwtProvider.generate(userId, loginType, sessionId);
-
-        // 生成 RefreshToken 並存到 cache
-        String refreshToken = UUID.randomUUID().toString();
-        UserLoginInfo userLoginInfo = UserLoginInfo.builder()
-                .tokenId(refreshToken)
-                .userId(userId)
-                .loginType(loginType)
-                .sessionId(sessionId)
-                .deviceId(deviceId)
-                .build();
-        cacheService.put(RT_KEY + refreshToken, userLoginInfo, REFRESH_TOKEN_TTL);
-
-        return new TokenPair(accessToken, refreshToken);
-    }
-
-    /**
-     * 註冊 session 並處理互踢
-     */
-    private void registerSession(String userId, LoginType loginType, String sessionId) {
-        // 互踢影響的登入類型會被刪掉
-        IMPACT_MAP.getOrDefault(loginType, Set.of()).forEach(type -> cacheService.delete(buildSessionKey(userId, type)));
-        cacheService.put(buildSessionKey(userId, loginType), sessionId, SESSION_TTL);
-    }
-
-    /**
-     * 移除 session 與 refresh token
-     */
-    private void removeSession(String refreshToken) {
-        UserLoginInfo loginInfo = cacheService.get(RT_KEY + refreshToken, UserLoginInfo.class).orElse(null);
-        if (loginInfo != null) {
-            cacheService.delete(buildSessionKey(loginInfo.getUserId(), loginInfo.getLoginType()));
-            cacheService.delete(RT_KEY + refreshToken);
-        }
-    }
-
-    /**
-     * 生成 Redis session key
-     */
-    private String buildSessionKey(String userId, LoginType loginType) {
-        return SESSION_KEY + userId + ":" + loginType;
     }
 }

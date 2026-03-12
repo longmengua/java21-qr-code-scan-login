@@ -1,0 +1,1 @@
+curl -N http://localhost:8080/auth/qr/subscribe/{qrId}

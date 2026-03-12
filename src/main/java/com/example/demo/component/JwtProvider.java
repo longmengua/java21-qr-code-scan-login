@@ -1,4 +1,4 @@
-package com.example.demo.security;
+package com.example.demo.component;
 
 import com.example.demo.config.JwtProperties;
 import com.example.demo.model.LoginType;

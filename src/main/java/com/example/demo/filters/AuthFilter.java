@@ -1,6 +1,7 @@
-package com.example.demo.security;
+package com.example.demo.filters;
 
 import com.example.demo.model.LoginType;
+import com.example.demo.component.JwtProvider;
 import com.example.demo.service.AuthService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -13,12 +14,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * JWT 認證過濾器 (SSO + 多端互踢)
+ * JWT 認證過濾器 (無 Spring Security 版本)
  *
  * 功能：
  * - 驗證 JWT 是否合法與未過期
- * - 透過 AuthService 檢查 sessionId 是否有效
- * - 支援多端互踢與單端登出
+ * - 檢查 sessionId 是否有效 (Redis / AuthService)
+ * - 支援單端登出 / 互踢
  */
 @Component
 public class AuthFilter extends OncePerRequestFilter {
@@ -26,9 +27,9 @@ public class AuthFilter extends OncePerRequestFilter {
     private final AuthService authService;
     private final JwtProvider jwtProvider;
 
-    public AuthFilter(JwtProvider jwtProvider, AuthService authService) {
-        this.jwtProvider = jwtProvider;
+    public AuthFilter(AuthService authService, JwtProvider jwtProvider) {
         this.authService = authService;
+        this.jwtProvider = jwtProvider;
     }
 
     @Override
@@ -38,29 +39,34 @@ public class AuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String auth = request.getHeader("Authorization");
+        String authHeader = request.getHeader("Authorization");
 
-        if (auth != null && auth.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
-                // 解析 JWT，檢查簽名與過期
-                Claims claims = jwtProvider.parse(auth.substring(7));
+                String token = authHeader.substring(7);
+                Claims claims = jwtProvider.parse(token);
+
                 String userId = claims.getSubject();
                 LoginType loginType = LoginType.valueOf(claims.get("loginType", String.class));
                 String sessionId = claims.get("sessionId", String.class);
 
-                // 檢查 session 是否仍然有效 (Redis / AuthService)
+                // 驗證 session
                 if (!authService.isSessionValidBySessionId(userId, loginType, sessionId)) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"token invalid or expired\"}");
+                    return; // 停止 filter chain
                 }
 
-                // 可將 userId / loginType 放入 request attribute，供 controller 使用
+                // 放入 request attribute，controller 可用
                 request.setAttribute("userId", userId);
                 request.setAttribute("loginType", loginType);
 
-            } catch (Exception e) {
+            } catch (Exception ex) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"invalid token\"}");
+                return; // 停止 filter chain
             }
         }
 

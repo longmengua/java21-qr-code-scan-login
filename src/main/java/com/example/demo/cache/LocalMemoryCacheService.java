@@ -2,8 +2,12 @@ package com.example.demo.cache;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +26,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @ConditionalOnProperty(name = "cache.type", havingValue = "local", matchIfMissing = true)
 public class LocalMemoryCacheService implements CacheService {
+
+    private final ObjectMapper objectMapper;
+
+    public LocalMemoryCacheService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * 內部快取物件封裝：
@@ -107,5 +117,44 @@ public class LocalMemoryCacheService implements CacheService {
     @Override
     public void delete(String key) {
         store.remove(key);
+    }
+
+    /**
+     * 取得快取所有內容
+     */
+    @Override
+    public Optional<String> getAll(List<String> prefixes) {
+        try {
+            long now = System.currentTimeMillis();
+
+            // 過濾過期 key 並保留符合 prefix 的 key
+            List<Map<String, Object>> result = store.entrySet().stream()
+                    .filter(entry -> {
+                        CacheObject obj = entry.getValue();
+                        if (now > obj.expireAt) {
+                            store.remove(entry.getKey()); // 移除過期
+                            return false;
+                        }
+                        return true;
+                    })
+                    .filter(entry -> {
+                        if (prefixes == null || prefixes.isEmpty()) {
+                            return true; // 保留全部
+                        }
+                        String key = entry.getKey();
+                        return prefixes.stream().anyMatch(key::startsWith);
+                    })
+                    .map(entry -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("key", entry.getKey());
+                        map.put("value", entry.getValue().value);
+                        return map;
+                    })
+                    .toList();
+
+            return Optional.of(objectMapper.writeValueAsString(result));
+        } catch (Exception e) {
+            return Optional.of("[]");
+        }
     }
 }
