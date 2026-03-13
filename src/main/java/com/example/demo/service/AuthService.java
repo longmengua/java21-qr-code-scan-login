@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.config.AdminProperties;
 import com.example.demo.enums.BizErrorCode;
+import com.example.demo.enums.RedisKeys;
 import com.example.demo.exceptions.BusinessException;
 import com.example.demo.model.LoginType;
 import com.example.demo.model.TokenPair;
@@ -20,10 +21,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-
     private static final Duration SESSION_TTL = Duration.ofDays(7);
-    private static final String SESSION_KEY_PREFIX = "user:session:";
-    private static final String IMPACT_KEY_PREFIX = "impact:";
 
     private final CacheService cacheService;
     private final JwtProvider jwtProvider;
@@ -32,7 +30,7 @@ public class AuthService {
     /**
      * 使用者註冊
      */
-    public TokenPair register(String username, String password, LoginType loginType, String deviceId) {
+    public TokenPair register(String username, String password, LoginType loginType) {
         String userId = verifyUser(username, password);
 
         if (userId != null) {
@@ -42,13 +40,13 @@ public class AuthService {
         // TODO: 建立新使用者到資料庫
         userId = UUID.randomUUID().toString();
 
-        return generateToken(userId, loginType, deviceId);
+        return generateToken(userId, loginType);
     }
 
     /**
      * 使用者登入
      */
-    public TokenPair login(String username, String password, LoginType loginType, String deviceId) {
+    public TokenPair login(String username, String password, LoginType loginType) {
         String userId = verifyUser(username, password);
 
         if (userId == null) {
@@ -60,7 +58,7 @@ public class AuthService {
             }
         }
 
-        return generateToken(userId, loginType, deviceId);
+        return generateToken(userId, loginType);
     }
 
     /**
@@ -83,7 +81,7 @@ public class AuthService {
     /**
      * 產生 AccessToken 並註冊 session
      */
-    public TokenPair generateToken(String userId, LoginType loginType, String deviceId) {
+    public TokenPair generateToken(String userId, LoginType loginType) {
         String sessionId = UUID.randomUUID().toString();
         registerSession(userId, loginType, sessionId);
 
@@ -117,12 +115,12 @@ public class AuthService {
         };
     }
 
-    private String buildSessionKey(String userId, LoginType loginType) {
-        return SESSION_KEY_PREFIX + userId + ":" + loginType;
+    public String buildSessionKey(String userId, LoginType loginType) {
+        return RedisKeys.SESSION_KEY_PREFIX + userId + ":" + loginType;
     }
 
-    private String buildImpactKey(String userId, LoginType loginType) {
-        return IMPACT_KEY_PREFIX + userId + ":" + loginType;
+    public String buildImpactKey(String userId, LoginType loginType) {
+        return RedisKeys.IMPACT_KEY_PREFIX + userId + ":" + loginType;
     }
 
     /**

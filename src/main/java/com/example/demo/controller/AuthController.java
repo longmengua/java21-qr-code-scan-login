@@ -13,10 +13,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
-@Slf4j
 public class AuthController {
 
     /**
@@ -57,8 +57,7 @@ public class AuthController {
                 authService.register(
                         req.getUsername(),
                         req.getPassword(),
-                        req.getLoginType(),
-                        deviceId
+                        req.getLoginType()
                 )
         );
     }
@@ -96,8 +95,7 @@ public class AuthController {
                 authService.login(
                         req.getUsername(),
                         req.getPassword(),
-                        req.getLoginType(),
-                        deviceId
+                        req.getLoginType()
                 )
         );
     }

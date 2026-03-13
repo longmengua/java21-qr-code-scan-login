@@ -5,6 +5,10 @@ import lombok.*;
 @Data
 @Builder
 public class QrLoginState {
+    private String userId;
+    private String qrCodeId;
+    private String qrCodeImg;
+    private Status status;
 
     public enum Status {
         INIT,
@@ -12,11 +16,8 @@ public class QrLoginState {
         EXPIRED
     }
 
-    private String qrId;
-    private String qrToken;
-    private Status status;
-
-    // 掃碼後綁定的 user
-    private String confirmedUserId;
+    public boolean isValidatedQrCode(String userId) {
+        return this.userId.equals(userId) && this.status == QrLoginState.Status.INIT;
+    }
 }
 

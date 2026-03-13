@@ -19,10 +19,10 @@ import java.util.Optional;
  * - 需要 Authorization: Bearer <AccessToken>
  * - AuthFilter 會將 userId 與 loginType 注入 request attribute
  */
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
-@Slf4j
 public class ApiController {
 
     private final CacheService cacheService;

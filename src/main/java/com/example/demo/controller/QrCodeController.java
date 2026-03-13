@@ -1,10 +1,13 @@
 package com.example.demo.controller;
 
+import com.example.demo.enums.BizErrorCode;
+import com.example.demo.exceptions.BusinessException;
 import com.example.demo.model.LoginType;
-import com.example.demo.model.QrLoginState;
 import com.example.demo.model.TokenPair;
+import com.example.demo.response.QrCodeInitResponse;
 import com.example.demo.service.AuthService;
 import com.example.demo.service.QrLoginService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -16,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth/qr")
-public class QrLoginController {
+public class QrCodeController {
 
     private final QrLoginService qrLoginService;
     private final AuthService authService;
@@ -30,8 +33,9 @@ public class QrLoginController {
      * Web 產生 QR
      */
     @PostMapping("/init")
-    public QrLoginState init() {
-        return qrLoginService.init();
+    public QrCodeInitResponse init() {
+        String qrCodeId = qrLoginService.init();
+        return new QrCodeInitResponse(qrCodeId);
     }
 
     /**
@@ -54,25 +58,27 @@ public class QrLoginController {
      */
     @PostMapping("/confirm")
     public void confirm(
-            @RequestParam String qrId,
-            @RequestParam String qrToken,
-            @RequestHeader("X-Device-Id") String deviceId
+            @RequestParam String qrCodeId,
+            HttpServletRequest request
     ) {
-        // TODO: 從 App 已登入 session 取得 userId
-        String userId = "USER-001";
 
-        qrLoginService.confirm(qrId, qrToken, userId);
+        // 從 request attribute 取得使用者資訊
+        String userId = (String) request.getAttribute("userId");
+        LoginType loginType = (LoginType) request.getAttribute("loginType");
 
-        // 掃碼成功，建立 SCAN 登入 session
-        TokenPair token = authService.generateToken(userId, LoginType.SCAN, deviceId);
+        if (loginType != LoginType.APP) {
+            throw new BusinessException(BizErrorCode.INVALID_TOKEN);
+        }
+
+        TokenPair tokenPair = qrLoginService.confirm(qrCodeId, userId);
 
         // SSE 通知 Web
-        SseEmitter emitter = emitters.get(qrId);
+        SseEmitter emitter = emitters.get(qrCodeId);
         if (emitter != null) {
             try {
                 emitter.send(SseEmitter.event()
                         .name("confirmed")
-                        .data(token));
+                        .data(tokenPair.getAccessToken()));
                 emitter.complete();
             } catch (IOException e) {
                 emitter.completeWithError(e);
