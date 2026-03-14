@@ -4,6 +4,6 @@ curl -X POST http://localhost:9000/auth/login \
   -d '{
     "username": "test",
     "password": "1234",
-    "loginType": "WEB",
+    "loginType": "APP",
     "deviceId": "DEVICE-001"
   }'

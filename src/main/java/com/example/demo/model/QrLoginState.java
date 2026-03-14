@@ -16,8 +16,8 @@ public class QrLoginState {
         EXPIRED
     }
 
-    public boolean isValidatedQrCode(String userId) {
-        return this.userId.equals(userId) && this.status == QrLoginState.Status.INIT;
+    public boolean isValidatedQrCode() {
+        return this.status == QrLoginState.Status.INIT;
     }
 }
 

@@ -5,6 +5,7 @@ import com.example.demo.exceptions.BusinessException;
 import com.example.demo.model.LoginType;
 import com.example.demo.model.TokenPair;
 import com.example.demo.response.QrCodeInitResponse;
+import com.example.demo.response.SuccessResponse;
 import com.example.demo.service.AuthService;
 import com.example.demo.service.QrLoginService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -57,7 +59,7 @@ public class QrCodeController {
      * App 掃碼確認
      */
     @PostMapping("/confirm")
-    public void confirm(
+    public SuccessResponse confirm(
             @RequestParam String qrCodeId,
             HttpServletRequest request
     ) {
@@ -73,16 +75,23 @@ public class QrCodeController {
         TokenPair tokenPair = qrLoginService.confirm(qrCodeId, userId);
 
         // SSE 通知 Web
-        SseEmitter emitter = emitters.get(qrCodeId);
-        if (emitter != null) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("confirmed")
-                        .data(tokenPair.getAccessToken()));
-                emitter.complete();
-            } catch (IOException e) {
-                emitter.completeWithError(e);
+        CompletableFuture.runAsync(() -> {
+            SseEmitter emitter = emitters.get(qrCodeId);
+            if (emitter != null) {
+                try {
+                    emitter.send(
+                        SseEmitter
+                            .event()
+                            .name("confirmed")
+                            .data(tokenPair)
+                    );
+                    emitter.complete();
+                } catch (IOException e) {
+                    emitter.completeWithError(e);
+                }
             }
-        }
+        });
+
+        return new SuccessResponse(true);
     }
 }

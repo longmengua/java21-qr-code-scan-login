@@ -1,1 +1,1 @@
-curl -N http://localhost:8080/auth/qr/subscribe/{qrId}
+curl -N http://localhost:9000/auth/qr/subscribe/f1f3111d-f9be-4fc3-94a5-05f7d4988eb8

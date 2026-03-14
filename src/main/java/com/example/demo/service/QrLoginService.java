@@ -37,7 +37,7 @@ public class QrLoginService {
         Optional<QrLoginState> state = cacheService.get(RedisKeys.QR_KEY + qrCodeId, QrLoginState.class);
 
         // 檢查 QrCode 合法性
-        if (state.isEmpty() || !state.get().isValidatedQrCode(userId)) {
+        if (state.isEmpty() || !state.get().isValidatedQrCode()) {
             throw new SecurityException("Invalid QR");
         }
 

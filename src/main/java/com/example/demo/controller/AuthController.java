@@ -5,7 +5,7 @@ import com.example.demo.exceptions.BusinessException;
 import com.example.demo.model.LoginType;
 import com.example.demo.request.LoginRequest;
 import com.example.demo.response.LoginResponse;
-import com.example.demo.response.LogoutResponse;
+import com.example.demo.response.SuccessResponse;
 import com.example.demo.service.AuthService;
 import com.example.demo.util.StringUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -112,7 +112,7 @@ public class AuthController {
      * @return LogoutResponse 回傳 logout 是否成功
      */
     @PostMapping("/logout")
-    public LogoutResponse logout(HttpServletRequest request) {
+    public SuccessResponse logout(HttpServletRequest request) {
 
         // 從 request attribute 取得使用者資訊
         String userId = (String) request.getAttribute("userId");
@@ -127,6 +127,6 @@ public class AuthController {
         authService.logout(userId, loginType);
 
         // 回傳 logout 成功
-        return new LogoutResponse(true);
+        return new SuccessResponse(true);
     }
 }
